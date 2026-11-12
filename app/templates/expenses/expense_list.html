@@ -1,0 +1,45 @@
+<div class="table-responsive">
+  <table class="table align-middle mb-0">
+    <thead>
+      <tr>
+        <th scope="col">Date</th>
+        <th scope="col">Category</th>
+        <th scope="col">Merchant / description</th>
+        <th scope="col" class="text-end">Amount</th>
+        <th scope="col"><span class="visually-hidden">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for expense in expenses %}
+      <tr>
+        <td>{{ expense.expense_date }}</td>
+        <td>{{ expense.category.name }}</td>
+        <td>
+          {{ expense.merchant or expense.description or "—" }}
+          {% if expense.notes %}<small class="d-block text-secondary">{{ expense.notes }}</small>{% endif %}
+        </td>
+        <td class="text-end text-nowrap">{{ expense.currency }} {{ "%.2f"|format(expense.amount) }}</td>
+        <td class="text-end text-nowrap">
+          <button class="btn btn-sm btn-outline-primary"
+                  hx-get="/expenses/{{ expense.id }}/edit"
+                  hx-target="#expense-modal .modal-content"
+                  hx-swap="outerHTML"
+                  data-bs-toggle="modal"
+                  data-bs-target="#expense-modal">Edit</button>
+          <form class="d-inline" method="post" action="/expenses/{{ expense.id }}/delete"
+                hx-post="/expenses/{{ expense.id }}/delete" hx-target="#expense-list"
+                hx-swap="innerHTML">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-sm btn-outline-danger" type="submit"
+                    aria-label="Delete expense {{ expense.merchant or expense.description or expense.expense_date }}">
+              Delete
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="py-4 text-center text-secondary" colspan="5">No expenses yet. Add your first expense.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

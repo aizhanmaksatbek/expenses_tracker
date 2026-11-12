@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Create account · Expense Tracker{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-sm-10 col-md-7 col-lg-5">
+    <section class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h3 mb-4">Create account</h1>
+        <form action="/auth/register" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="form-label" for="username">Username</label>
+          <input class="form-control mb-3" id="username" name="username" minlength="3" maxlength="32" required autocomplete="username">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-control mb-3" id="email" name="email" type="email" required autocomplete="email">
+          <label class="form-label" for="password">Password (at least 12 characters)</label>
+          <input class="form-control mb-4" id="password" name="password" type="password" minlength="12" maxlength="128" required autocomplete="new-password">
+          <button class="btn btn-primary w-100" type="submit">Create account</button>
+        </form>
+        <p class="mt-3 mb-0 text-center">Already registered? <a href="/login">Log in</a></p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

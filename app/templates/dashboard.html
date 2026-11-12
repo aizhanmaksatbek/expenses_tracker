@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Expense Tracker{% endblock %}
+{% block content %}
+<header class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Expense Tracker</h1>
+    <p class="text-secondary mb-0">Welcome, {{ user.username }}.</p>
+  </div>
+  <form action="/auth/logout" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-outline-secondary" type="submit">Log out</button>
+  </form>
+</header>
+<div class="row g-4">
+  <section class="col-12 col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Expenses</h2>
+        <button class="btn btn-primary"
+                hx-get="/expenses/new"
+                hx-target="#expense-modal .modal-content"
+                hx-swap="outerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#expense-modal">Add Expense</button>
+      </div>
+      <div class="card-body p-0" id="expense-list">
+        {% include "expenses/expense_list.html" %}
+      </div>
+    </div>
+  </section>
+  <aside class="col-12 col-lg-4">
+    <section class="card shadow-sm">
+      <div class="card-header bg-white"><h2 class="h5 mb-0">Categories</h2></div>
+      <div class="card-body">
+        {% if request.query_params.get("category_error") %}
+        <div class="alert alert-danger" role="alert">Could not add that category. Check the name or try a different one.</div>
+        {% endif %}
+        <div id="category-errors"></div>
+        <form class="input-group mb-3" method="post" action="/categories/form"
+              hx-post="/categories/form" hx-target="#category-list" hx-swap="innerHTML">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="visually-hidden" for="new-category">New category</label>
+          <input class="form-control" id="new-category" name="name" maxlength="60" placeholder="New category" required>
+          <button class="btn btn-outline-primary" type="submit">Add</button>
+        </form>
+        <ul class="list-group list-group-flush" id="category-list">
+          {% include "expenses/category_list.html" %}
+        </ul>
+      </div>
+    </section>
+  </aside>
+</div>
+<div class="modal fade" id="expense-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.body.addEventListener("expenseSaved", () => {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("expense-modal")).hide();
+  });
+  document.body.addEventListener("htmx:beforeSwap", (event) => {
+    if (event.detail.xhr.status >= 400 && event.detail.xhr.status < 500) {
+      event.detail.shouldSwap = true;
+    }
+  });
+</script>
+{% endblock %}

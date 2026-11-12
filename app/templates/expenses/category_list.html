@@ -1,0 +1,7 @@
+{% for category in categories %}
+<li class="list-group-item d-flex justify-content-between">
+  <span>{{ category.name }}</span>
+</li>
+{% else %}
+<li class="list-group-item text-secondary">No categories yet.</li>
+{% endfor %}

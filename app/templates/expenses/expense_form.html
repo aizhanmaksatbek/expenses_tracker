@@ -1,0 +1,82 @@
+<div class="modal-content">
+  <form method="post" {% if expense %}action="/expenses/{{ expense.id }}/edit" hx-post="/expenses/{{ expense.id }}/edit"{% else %}action="/expenses/form" hx-post="/expenses/form"{% endif %}
+        hx-target="#expense-list" hx-swap="innerHTML">
+    <div class="modal-header">
+      <h2 class="modal-title fs-5">{% if expense %}Edit expense{% else %}Add expense{% endif %}</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+      {% if errors %}
+      <div class="alert alert-danger" role="alert">
+        {% for error in errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="row g-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label" for="amount">Amount</label>
+          <input class="form-control" id="amount" name="amount" type="number" min="0.01" step="0.01"
+                 inputmode="decimal" required value="{{ form_data.get('amount', expense.amount if expense else '') }}">
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label" for="expense_date">Expense date</label>
+          <input class="form-control" id="expense_date" name="expense_date" type="date" required
+                 value="{{ form_data.get('expense_date', expense.expense_date.isoformat() if expense else today) }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="category_id">Category</label>
+          <select class="form-select" id="category_id" name="category_id" required>
+            <option value="">Choose a category</option>
+            {% for category in categories %}
+            {% set selected_category = form_data.get('category_id', expense.category_id if expense else '') %}
+            <option value="{{ category.id }}" {% if selected_category|string == category.id|string %}selected{% endif %}>
+              {{ category.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <details class="mt-3">
+        <summary class="text-primary">More details (currency, merchant, payment method, notes)</summary>
+        <div class="row g-3 pt-3">
+          <div class="col-12 col-sm-6">
+            <label class="form-label" for="currency">Currency</label>
+            <input class="form-control text-uppercase" id="currency" name="currency" maxlength="3"
+                   value="{{ form_data.get('currency', expense.currency if expense else 'MYR') }}">
+          </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label" for="merchant">Merchant</label>
+            <input class="form-control" id="merchant" name="merchant" maxlength="120"
+                   value="{{ form_data.get('merchant', expense.merchant if expense else '') }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="description">Description</label>
+            <input class="form-control" id="description" name="description" maxlength="255"
+                   value="{{ form_data.get('description', expense.description if expense else '') }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="payment_method">Payment method</label>
+            {% set selected_payment = form_data.get('payment_method', expense.payment_method if expense else '') %}
+            <select class="form-select" id="payment_method" name="payment_method">
+              <option value="">Not specified</option>
+              {% for value, label in [
+                ('cash', 'Cash'), ('credit_card', 'Credit card'), ('debit_card', 'Debit card'),
+                ('bank_transfer', 'Bank transfer'), ('e_wallet', 'E-wallet'), ('other', 'Other')
+              ] %}
+              <option value="{{ value }}" {% if selected_payment == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="notes">Notes</label>
+            <textarea class="form-control" id="notes" name="notes" rows="2">{{ form_data.get('notes', expense.notes if expense else '') }}</textarea>
+          </div>
+        </div>
+      </details>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save expense</button>
+    </div>
+  </form>
+</div>
