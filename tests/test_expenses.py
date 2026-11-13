@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -256,6 +256,90 @@ def test_dashboard_and_quick_entry_form_render(client: TestClient):
     assert "requestBody" in openapi["paths"]["/expenses"]["post"]
 
 
+def test_dashboard_statistics_filter_dates_currencies_and_users(client: TestClient):
+    csrf_token = register_and_login(client, "alice")
+    today = date.today()
+    create_expense(client, csrf_token, expense_date=today.isoformat(), amount="18.75")
+    create_expense(
+        client,
+        csrf_token,
+        expense_date=today.isoformat(),
+        amount="10.00",
+        currency="USD",
+    )
+    create_expense(
+        client,
+        csrf_token,
+        expense_date=(today - timedelta(days=1)).isoformat(),
+        amount="50.00",
+    )
+
+    other_client = TestClient(client.app)
+    other_csrf = register_and_login(other_client, "bob")
+    create_expense(other_client, other_csrf, expense_date=today.isoformat(), amount="99.00")
+
+    response = client.get(f"/?start_date={today.isoformat()}&end_date={today.isoformat()}")
+
+    assert response.status_code == 200
+    assert 'id="dashboard-expense-count">2</div>' in response.text
+    assert response.text.count("<polyline ") == 2
+    totals = response.text.split('id="dashboard-total">', 1)[1].split(
+        '<div class="col-12 col-md-4">', 1
+    )[0]
+    assert "MYR 18.75" in totals
+    assert "USD 10.00" in totals
+    assert "50.00" not in totals
+    assert "99.00" not in totals
+    other_client.close()
+
+
+def test_dashboard_rejects_reversed_date_range(client: TestClient):
+    register_and_login(client)
+
+    response = client.get("/?start_date=2026-11-13&end_date=2026-11-12")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("days", [31, 731])
+def test_dashboard_trend_handles_monthly_and_yearly_ranges(
+    client: TestClient, days: int
+):
+    csrf_token = register_and_login(client)
+    today = date.today()
+    create_expense(client, csrf_token, expense_date=today.isoformat())
+
+    response = client.get(
+        f"/?start_date={(today - timedelta(days=days)).isoformat()}"
+        f"&end_date={today.isoformat()}"
+    )
+
+    assert response.status_code == 200
+    assert "Spending over time" in response.text
+
+
+def test_dashboard_draws_a_trend_line_with_zero_spend_days(client: TestClient):
+    csrf_token = register_and_login(client)
+    today = date.today()
+    create_expense(client, csrf_token, expense_date=today.isoformat(), amount="25.00")
+    create_expense(
+        client,
+        csrf_token,
+        expense_date=(today - timedelta(days=2)).isoformat(),
+        amount="10.00",
+    )
+
+    response = client.get(
+        f"/?start_date={(today - timedelta(days=2)).isoformat()}"
+        f"&end_date={today.isoformat()}"
+    )
+
+    assert response.status_code == 200
+    assert response.text.count("<circle ") == 3
+    assert "<polyline " in response.text
+    assert (today - timedelta(days=1)).strftime("%d %b") in response.text
+
+
 def test_htmx_form_create_update_and_delete(client: TestClient):
     csrf_token = register_and_login(client)
     form_data = {
@@ -289,6 +373,7 @@ def test_htmx_form_create_update_and_delete(client: TestClient):
         headers={"HX-Request": "true"},
     )
     assert deleted.status_code == 200
+    assert deleted.headers["HX-Trigger"] == "expenseSaved"
     assert "No expenses yet" in deleted.text
 
 

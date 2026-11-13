@@ -11,6 +11,119 @@
     <button class="btn btn-outline-secondary" type="submit">Log out</button>
   </form>
 </header>
+<section class="card shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+      <div>
+        <h2 class="h5 mb-1">Spending overview</h2>
+        <p class="text-secondary mb-0">{{ statistics.period_label }}</p>
+      </div>
+      <form class="row g-2 align-items-end" method="get" action="/">
+        <div class="col-auto">
+          <label class="form-label mb-1" for="start-date">From</label>
+          <input class="form-control" id="start-date" name="start_date" type="date"
+                 value="{{ start_date.isoformat() }}" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label mb-1" for="end-date">To</label>
+          <input class="form-control" id="end-date" name="end_date" type="date"
+                 value="{{ end_date.isoformat() }}" required>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-primary" type="submit">Apply</button>
+        </div>
+        <div class="col-auto">
+          <a class="btn btn-link" href="/">This month</a>
+        </div>
+      </form>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="rounded border bg-body-tertiary p-3 h-100">
+          <div class="small text-secondary mb-1">Total spent</div>
+          <div id="dashboard-total">
+            {% for total in statistics.totals %}
+            <div class="fs-5 fw-semibold">{{ total.currency }} {{ "%.2f"|format(total.amount) }}</div>
+            {% else %}
+            <div class="fs-5 fw-semibold">—</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="rounded border bg-body-tertiary p-3 h-100">
+          <div class="small text-secondary mb-1">Expenses</div>
+          <div class="fs-5 fw-semibold" id="dashboard-expense-count">{{ statistics.expense_count }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="rounded border bg-body-tertiary p-3 h-100">
+          <div class="small text-secondary mb-1">Average per day</div>
+          <div id="dashboard-daily-average">
+            {% for total in statistics.totals %}
+            <div class="fs-5 fw-semibold">{{ total.currency }} {{ "%.2f"|format(total.daily_average) }}</div>
+            {% else %}
+            <div class="fs-5 fw-semibold">—</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row g-4">
+      <section class="col-12 col-lg-5" aria-labelledby="category-spending-title">
+        <h3 class="h6 mb-3" id="category-spending-title">Spending by category</h3>
+        {% for item in statistics.categories %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between gap-3 small mb-1">
+            <span>{{ item.name }} <span class="text-secondary">({{ item.currency }})</span></span>
+            <span class="text-nowrap">{{ item.currency }} {{ "%.2f"|format(item.amount) }}</span>
+          </div>
+          <div class="progress" role="progressbar"
+               aria-label="{{ item.name }} spending in {{ item.currency }}"
+               aria-valuenow="{{ item.percentage|round|int }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" style="width: {{ item.percentage }}%"></div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-secondary mb-0">No spending in this date range.</p>
+        {% endfor %}
+      </section>
+      <section class="col-12 col-lg-7" aria-labelledby="spending-trend-title">
+        <h3 class="h6 mb-3" id="spending-trend-title">Spending over time</h3>
+        {% for chart in statistics.trends %}
+        <figure class="mb-4">
+          <figcaption class="small fw-semibold mb-2">{{ chart.currency }} spending</figcaption>
+          <svg class="w-100" viewBox="0 0 720 220" role="img"
+               aria-labelledby="spending-trend-{{ loop.index }}">
+            <title id="spending-trend-{{ loop.index }}">
+              {{ chart.currency }} spending trend from {{ start_date }} to {{ end_date }}
+            </title>
+            {% for tick in chart.y_labels %}
+            <line x1="88" y1="{{ tick.position }}" x2="688" y2="{{ tick.position }}"
+                  stroke="#dee2e6" stroke-width="1"></line>
+            <text x="80" y="{{ tick.position + 4 }}" text-anchor="end"
+                  fill="#6c757d" font-size="12">{{ tick.label }}</text>
+            {% endfor %}
+            <polyline points="{{ chart.line_points }}" fill="none" stroke="#0d6efd"
+                      stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            {% for point in chart.points %}
+            <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3.5" fill="#0d6efd">
+              <title>{{ point.label }}: {{ chart.currency }} {{ "%.2f"|format(point.amount) }}</title>
+            </circle>
+            {% endfor %}
+            {% for tick in chart.x_labels %}
+            <text x="{{ tick.position }}" y="200" text-anchor="{{ tick.anchor }}"
+                  fill="#6c757d" font-size="12">{{ tick.label }}</text>
+            {% endfor %}
+          </svg>
+        </figure>
+        {% else %}
+        <p class="text-secondary mb-0">No spending in this date range.</p>
+        {% endfor %}
+      </section>
+    </div>
+  </div>
+</section>
 <div class="row g-4">
   <section class="col-12 col-lg-8">
     <div class="card shadow-sm">
@@ -59,6 +172,7 @@
 <script>
   document.body.addEventListener("expenseSaved", () => {
     bootstrap.Modal.getOrCreateInstance(document.getElementById("expense-modal")).hide();
+    window.location.reload();
   });
   document.body.addEventListener("htmx:beforeSwap", (event) => {
     if (event.detail.xhr.status >= 400 && event.detail.xhr.status < 500) {

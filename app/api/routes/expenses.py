@@ -332,5 +332,7 @@ def delete_expense_form(
 ):
     delete_expense(db, context.user, expense_id)
     if request.headers.get("HX-Request") == "true":
-        return _expense_list_fragment(request, db, context)
+        fragment = _expense_list_fragment(request, db, context)
+        fragment.headers["HX-Trigger"] = "expenseSaved"
+        return fragment
     return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)

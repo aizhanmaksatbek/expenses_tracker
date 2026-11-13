@@ -18,6 +18,8 @@ Create an account at `/register`, then add and manage expenses from the dashboar
 start with Food, Transport, Housing, Utilities, Health, Shopping, and Other categories; users
 can also add categories. The quick-entry form defaults the currency to MYR and the date to today.
 Each user's expenses and categories are scoped to their authenticated session.
+The dashboard summarizes spending by currency and category, and plots a date-range trend line for
+each currency; its default range is the current month.
 
 The JSON expense endpoints are `GET/POST /expenses` and `GET/PUT/DELETE /expenses/{id}`.
 Mutating browser-session requests require the session CSRF token (`X-CSRF-Token` for JSON).
