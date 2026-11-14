@@ -29,7 +29,7 @@ jobs:
                     docker --version
 
                     # Navigate to the project directory and deploy
-                    if [! -d "expenses_tracker"]; then
+                    if [ ! -d "expenses_tracker" ]; then
                         git clone https://github.com/aizhanmaksatbek/expenses_tracker.git
                     fi
                     cd expenses_tracker
