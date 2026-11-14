@@ -17,34 +17,22 @@ jobs:
                 key: ${{ secrets.SSH_PRIVATE_KEY }}
                 script: |
                     # Update package index and install dependencies
-                    sudo dnf update -y
-                    sudo dnf install -y git docker
+                    sudo apt-get update
+                    sudo apt-get install -y docker.io
 
-                    # Verify installations
-                    docker --version
-
-                    # Install Docker Compose
                     sudo systemctl enable docker
                     sudo systemctl start docker
 
                     sudo usermod -aG docker ${{secrets.SSH_USERNAME}}
 
-                    # Install Docker Compose
-                    sudo mkdir -p /usr/local/lib/docker/cli-plugins
-                    
-                    sudo curl -SL https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-amd64 -o /usr/local/lib/docker/cli-plugins/docker-buildx
-
-                    sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
-
                     # Verify installations
-                    docker buildx version
+                    docker --version
 
                     # Navigate to the project directory and deploy
-                    cd /home/ec2-user/
-                    if [! -d "neptun-stream"]; then
-                        git clone https://github.com/aizhanmaksatbek/neptun-stream.git
+                    if [! -d "expenses_manager"]; then
+                        git clone https://github.com/aizhanmaksatbek/expenses_tracker.git
                     fi
-                    cd neptun-stream
+                    cd expenses_manager
                     git fetch origin main
                     git reset --hard origin/main
                     docker compose up -d --build
