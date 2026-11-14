@@ -22,7 +22,7 @@ jobs:
                 pytest
             # Checks code style - Linting
             - run: |
-                flake8 .
+                ruff check .
             #  Formatting check
             - run: |
                 black --check .
