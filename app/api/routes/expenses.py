@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import date
 from typing import Annotated, Literal
 from uuid import UUID
@@ -167,6 +169,51 @@ def edit_expense_page(
         context,
         list_categories(db, context.user),
         expense=expense,
+    )
+
+
+@router.get("/expenses/export.csv")
+def export_expenses_csv(
+    db: DbSession,
+    context: AuthContext = Depends(get_auth_context),
+    start_date: date | None = None,
+    end_date: date | None = None,
+    category_id: UUID | None = None,
+    search: Annotated[str | None, Query(max_length=100)] = None,
+    sort: SortOrder = "newest",
+):
+    result = list_expenses(
+        db,
+        context.user,
+        start_date=start_date,
+        end_date=end_date,
+        category_id=category_id,
+        search=search,
+        sort=sort,
+    )
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        ["date", "category", "merchant", "description", "amount", "currency", "payment_method"]
+    )
+    for item in result:
+        row = [
+            item.expense_date.isoformat(),
+            item.category.name,
+            item.merchant or "",
+            item.description or "",
+            f"{item.amount:.2f}",
+            item.currency,
+            item.payment_method or "",
+        ]
+        # Prevent spreadsheet formula injection from user-entered text.
+        writer.writerow(
+            [f"'{v}" if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v for v in row]
+        )
+    return Response(
+        buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="expenses.csv"'},
     )
 
 

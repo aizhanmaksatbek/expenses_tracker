@@ -2,11 +2,11 @@ services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: expenses
-      POSTGRES_USER: expenses
-      POSTGRES_PASSWORD: expenses
+      POSTGRES_DB: ${POSTGRES_DB:-expenses}
+      POSTGRES_USER: ${POSTGRES_USER:-expenses}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expenses}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U expenses -d expenses"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -16,8 +16,8 @@ services:
   app:
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://expenses:expenses@db:5432/expenses
-      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-expenses}:${POSTGRES_PASSWORD:-expenses}@db:5432/${POSTGRES_DB:-expenses}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
     ports:
       - "8000:8000"
     depends_on:

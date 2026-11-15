@@ -39,3 +39,19 @@ GitHub Actions has separate CI and CD workflows. CI runs lint, tests, and a Dock
 `SSH_HOST`\
 `SSH_PRIVATE_KEY`\
 `SSH_USERNAME`
+
+## Features
+
+- Dashboard with KPIs, change vs. previous period, top category, donut charts and spending trend
+- Range presets (this month, last month, last 30 days, YTD, last 12 months)
+- Monthly budgets per category with progress bars and over-budget alerts
+- CSV export of filtered expenses (`/expenses/export.csv`)
+- Dark mode, client-side search, toast notifications
+- `/health` endpoint that checks the database
+
+## Demo data
+
+```bash
+alembic upgrade head
+python -m app.scripts.seed   # login: demo / DemoPassword123!
+```

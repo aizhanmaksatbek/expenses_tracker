@@ -1,4 +1,3 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
@@ -14,6 +13,8 @@ class CurrencyTotal:
     currency: str
     amount: Decimal
     daily_average: Decimal
+    previous_amount: Decimal = Decimal("0.00")
+    change_percent: float | None = None
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class CategorySpending:
     currency: str
     amount: Decimal
     percentage: float
+    color: str = "#0d6efd"
 
 
 @dataclass(frozen=True)
@@ -62,6 +64,8 @@ class DashboardStatistics:
     categories: list[CategorySpending]
     trends: list[TrendChart]
     period_label: str
+    top_category: CategorySpending | None = None
+    donut_gradients: dict[str, str] | None = None
 
 
 def _build_trend_chart(currency: str, periods: list[SpendingPeriod]) -> TrendChart:
@@ -106,6 +110,28 @@ def _build_trend_chart(currency: str, periods: list[SpendingPeriod]) -> TrendCha
     )
 
 
+CATEGORY_COLORS = (
+    "#4f46e5",
+    "#06b6d4",
+    "#10b981",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#ec4899",
+    "#64748b",
+)
+
+
+def _donut_gradient(items: list[CategorySpending]) -> str:
+    stops = []
+    cursor = 0.0
+    for item in items:
+        end = min(cursor + item.percentage, 100.0)
+        stops.append(f"{item.color} {cursor:.2f}% {end:.2f}%")
+        cursor = end
+    return f"conic-gradient({', '.join(stops)})" if stops else "none"
+
+
 def get_dashboard_statistics(
     db: Session,
     user: User,
@@ -128,11 +154,30 @@ def get_dashboard_statistics(
         .order_by(Expense.currency)
     ).all()
     days_in_period = (end_date - start_date).days + 1
+    previous_end = start_date - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=days_in_period - 1)
+    previous_totals = dict(
+        db.execute(
+            select(Expense.currency, func.sum(Expense.amount))
+            .where(
+                Expense.user_id == user.id,
+                Expense.expense_date >= previous_start,
+                Expense.expense_date <= previous_end,
+            )
+            .group_by(Expense.currency)
+        ).all()
+    )
     totals = [
         CurrencyTotal(
             currency=currency,
             amount=amount,
             daily_average=(amount / days_in_period).quantize(Decimal("0.01")),
+            previous_amount=previous_totals.get(currency, Decimal("0.00")),
+            change_percent=(
+                float((amount - previous_totals[currency]) / previous_totals[currency] * 100)
+                if previous_totals.get(currency)
+                else None
+            ),
         )
         for currency, amount, _count in totals_query
     ]
@@ -144,18 +189,28 @@ def get_dashboard_statistics(
         .group_by(Category.name, Expense.currency)
         .order_by(Category.name, Expense.currency)
     ).all()
-    category_max = defaultdict(Decimal)
-    for _name, currency, amount in category_rows:
-        category_max[currency] = max(category_max[currency], amount)
+    category_totals = {total.currency: total.amount for total in totals}
+    ranked_rows = sorted(category_rows, key=lambda row: row[2], reverse=True)
     categories = [
         CategorySpending(
             name=name,
             currency=currency,
             amount=amount,
-            percentage=float(amount / category_max[currency] * 100),
+            percentage=float(amount / category_totals[currency] * 100),
+            color=CATEGORY_COLORS[index % len(CATEGORY_COLORS)],
         )
-        for name, currency, amount in category_rows
+        for index, (name, currency, amount) in enumerate(ranked_rows)
     ]
+    primary_currency = totals[0].currency if totals else None
+    top_category = next(
+        (item for item in categories if item.currency == primary_currency), None
+    )
+    donut_gradients = {
+        total.currency: _donut_gradient(
+            [item for item in categories if item.currency == total.currency]
+        )
+        for total in totals
+    }
 
     day_count = (end_date - start_date).days
     if day_count <= 30:
@@ -260,4 +315,6 @@ def get_dashboard_statistics(
         categories=categories,
         trends=trends,
         period_label=period_label,
+        top_category=top_category,
+        donut_gradients=donut_gradients,
     )
