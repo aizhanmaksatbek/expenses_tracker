@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -9,7 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.dependencies import (
-    AuthContext,
     DbSession,
     anonymous_csrf_token,
     clear_session_cookie,
@@ -171,14 +170,18 @@ async def login(request: Request, db: DbSession):
     return response
 
 
-@router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(
-    db: DbSession,
-    context: AuthContext = Depends(get_auth_context),
-    _csrf: None = Depends(require_csrf),
-) -> Response:
-    context.session.revoked_at = datetime.now(timezone.utc)
-    db.commit()
-    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/auth/logout", status_code=status.HTTP_303_SEE_OTHER)
+async def logout(request: Request, db: DbSession) -> Response:
+    try:
+        context = get_auth_context(request, db)
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_401_UNAUTHORIZED:
+            raise
+    else:
+        await require_csrf(request, context)
+        context.session.revoked_at = datetime.now(timezone.utc)
+        db.commit()
+
+    response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
     clear_session_cookie(response)
     return response

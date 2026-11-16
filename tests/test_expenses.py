@@ -395,6 +395,16 @@ def test_form_validation_shows_an_error_and_logout_revokes_session(client: TestC
     logout = client.post(
         "/auth/logout",
         data={"csrf_token": csrf_token},
+        follow_redirects=False,
     )
-    assert logout.status_code == 204
+    assert logout.status_code == 303
+    assert logout.headers["location"] == "/login"
     assert client.get("/expenses").status_code == 401
+
+    repeated_logout = client.post(
+        "/auth/logout",
+        data={"csrf_token": csrf_token},
+        follow_redirects=False,
+    )
+    assert repeated_logout.status_code == 303
+    assert repeated_logout.headers["location"] == "/login"
